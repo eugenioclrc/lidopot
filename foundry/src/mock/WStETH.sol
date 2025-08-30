@@ -30,8 +30,8 @@ contract WStETH is ERC20("Wrapped Staked Ether", "wstETH", 18) {
      * @return Amount of stETH user receives after unwrap
      */
     function unwrap(uint256 _wstETHAmount) external returns (uint256) {
-        _burn(msg.sender, _wstETHAmount);
         uint256 amount = getStETHByWstETH(_wstETHAmount);
+        _burn(msg.sender, _wstETHAmount);
         steth.transfer(msg.sender, amount);
         return amount;
     }

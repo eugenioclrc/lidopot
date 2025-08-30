@@ -75,4 +75,37 @@ contract LidoMockTest is Test {
         assertEq(steth.balanceOf(user), 0);
         vm.stopPrank();
     }
+
+    function testRebase() public {
+        vm.startPrank(user);
+        steth.airdrop();
+
+        steth.approve(address(wsteth), type(uint256).max);
+
+        wsteth.wrap(1 ether);
+        vm.stopPrank();
+
+        assertEq(wsteth.balanceOf(user), 1 ether);
+        assertEq(steth.balanceOf(user), 0);
+        assertEq(wsteth.stEthPerToken(), 1 ether);
+        assertEq(wsteth.getStETHByWstETH(0.5 ether), 0.5 ether);
+        assertEq(wsteth.getWstETHByStETH(0.5 ether), 0.5 ether);
+
+        // lets mock a rebase
+        steth.transfer(address(wsteth), 1 ether);
+
+         assertEq(wsteth.balanceOf(user), 1 ether);
+        assertEq(steth.balanceOf(user), 0);
+        assertEq(wsteth.stEthPerToken(), 2 ether);
+        assertEq(wsteth.getStETHByWstETH(0.5 ether), 1 ether);
+        assertEq(wsteth.getWstETHByStETH(0.5 ether), 0.25 ether);
+
+        vm.startPrank(user);
+        wsteth.unwrap(1 ether);
+        vm.stopPrank();
+
+        assertEq(steth.balanceOf(user), 2 ether);
+        assertEq(wsteth.balanceOf(user), 0);
+
+    }
 }
