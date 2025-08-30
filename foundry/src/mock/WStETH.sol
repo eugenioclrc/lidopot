@@ -58,7 +58,6 @@ contract WStETH is ERC20("Wrapped Staked Ether", "wstETH", 18) {
         return _wstETHAmount * amount / 1 ether;
     }
 
-
     /**
      * @notice Get amount of stETH for a one wstETH
      * @return Amount of stETH for 1 wstETH
