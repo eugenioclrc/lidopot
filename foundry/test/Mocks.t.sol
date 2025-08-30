@@ -48,4 +48,31 @@ contract LidoMockTest is Test {
         assertEq(steth.getPooledEthByShares(value), value);
         assertEq(steth.getPooledEthByShares(value), value);
     }
+
+    function testWrap(uint256 value, uint256 value2) public {
+        value = bound(value, 1, 50 ether);
+        value2 = bound(value2, 1, 50 ether);
+        vm.deal(user, value + value2);
+        vm.startPrank(user);
+        steth.submit{value: value}(address(0));
+
+        vm.expectRevert();
+        wsteth.wrap(value);
+        steth.approve(address(wsteth), type(uint256).max);
+
+        uint256 retval = wsteth.wrap(value);
+
+        assertEq(wsteth.balanceOf(user), value);
+        assertEq(retval, value);
+        assertEq(steth.balanceOf(user), 0);
+
+        steth.submit{value: value2}(address(0));
+
+        retval = wsteth.wrap(value2);
+
+        assertEq(wsteth.balanceOf(user), value + value2);
+        assertEq(retval, value2);
+        assertEq(steth.balanceOf(user), 0);
+        vm.stopPrank();
+    }
 }

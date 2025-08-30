@@ -15,8 +15,8 @@ contract WStETH is ERC20("Wrapped Staked Ether", "wstETH", 18) {
     }
 
     function wrap(uint256 _stETHAmount) external returns (uint256) {
-        steth.transferFrom(msg.sender, address(this), _stETHAmount);
         uint256 amount = getWstETHByStETH(_stETHAmount);
+        steth.transferFrom(msg.sender, address(this), _stETHAmount);
         _mint(msg.sender, amount);
         return amount;
     }
@@ -42,6 +42,9 @@ contract WStETH is ERC20("Wrapped Staked Ether", "wstETH", 18) {
      * @return Amount of wstETH for a given stETH amount
      */
     function getWstETHByStETH(uint256 _stETHAmount) public view returns (uint256) {
+        if (totalSupply == 0) {
+            return _stETHAmount;
+        }
         uint256 amount = totalSupply * 1 ether / steth.balanceOf(address(this));
 
         // _stETHAmount = x wsETH
