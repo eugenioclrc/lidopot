@@ -6,6 +6,8 @@ import {ERC721} from "solmate/tokens/ERC721.sol";
 
 import {IStETH, IWstETH} from "./ILido.sol";
 
+import {console} from "forge-std/console.sol";
+
 contract TicketsLidoPot is Owned(msg.sender), ERC721("Ticket Lido POT", "LPOT") {
     uint256 public totalWsteth;
     uint256 public totalSteth;
@@ -36,19 +38,21 @@ contract TicketsLidoPot is Owned(msg.sender), ERC721("Ticket Lido POT", "LPOT") 
     }
 
     function ticketPriceInSteth() public view returns (uint256) {
-        if (validTickets.length > 0) {
-            uint256 _totalSteth = STETH.getPooledEthByShares(WSTETH.getStETHByWstETH(totalWsteth));
-            return _totalSteth / validTickets.length;
+        if (validTickets.length == 0) {
+            return START_TICKET_PRICE_STETH;
         }
-        return START_TICKET_PRICE_STETH;
+
+        return WSTETH.getStETHByWstETH(ticketPrice());
     }
 
     // @notice ticket price is in WStETH
     // @return ticket price in WStETH
     function ticketPrice() public view returns (uint256) {
         // calculate ticket price
-        uint256 stethPrice = ticketPriceInSteth();
-        return WSTETH.getWstETHByStETH(stethPrice);
+        if (totalWsteth == 0) {
+            return WSTETH.getWstETHByStETH(START_TICKET_PRICE_STETH);
+        }
+        return totalWsteth / validTickets.length;
     }
 
     function mint(uint256 amountTickets) external {
@@ -84,10 +88,12 @@ contract TicketsLidoPot is Owned(msg.sender), ERC721("Ticket Lido POT", "LPOT") 
     // @notice only owner can burn (some one with permission to the token cant burn)
     function burn(uint256 id) public {
         require(ownerOf(id) == msg.sender);
-        uint256 price = ticketPrice();
+        uint256 price = ticketPrice(); //price in WSTETH
+        uint256 priceSteth = WSTETH.getStETHByWstETH(price);
         totalWsteth -= price;
-        totalSteth -= ticketPriceInSteth();
+        totalSteth -= priceSteth;
         // remove ticket id from validTickets
+
         _removeTicket(id);
         uint256 val = WSTETH.unwrap(price);
         STETH.transfer(msg.sender, val);
@@ -113,13 +119,20 @@ contract TicketsLidoPot is Owned(msg.sender), ERC721("Ticket Lido POT", "LPOT") 
         }
     }
 
+    function pricePool() public view returns (uint256) {
+        if (totalWsteth == 0) return 0;
+        console.log(WSTETH.getStETHByWstETH(totalWsteth), totalSteth);
+
+        return WSTETH.getStETHByWstETH(totalWsteth) - totalSteth;
+    }
+
     // @audit INSECURE FUNCTION, only valid for a hackaton MVP
     function raffle() external {
         require(validTickets.length > 0, "No tickets");
         require(lastRaffleTimestamp + RAFFLE_INTERVAL < block.timestamp, "Raffle not ready, wait one day");
 
-        uint256 pricePool = WSTETH.getStETHByWstETH(totalWsteth) - totalSteth;
-        require(pricePool > 0, "no price to be award");
+        uint256 _pricePool = pricePool();
+        require(_pricePool > 0, "no price to be award");
 
         uint256 randomNumber = uint256(blockhash(block.number - 1));
         // raffleProbabilities is the probability of doing a raffle
@@ -127,16 +140,16 @@ contract TicketsLidoPot is Owned(msg.sender), ERC721("Ticket Lido POT", "LPOT") 
             // Do the raffle
             uint256 winnerTicket = validTickets[randomNumber % validTickets.length];
             address winner = ownerOf(winnerTicket);
-            uint256 priceSTETH = WSTETH.unwrap(WSTETH.getWstETHByStETH(pricePool));
+            uint256 priceSTETH = WSTETH.unwrap(WSTETH.getWstETHByStETH(_pricePool));
 
-            // priceSTETH should be equal to pricePool
+            // priceSTETH should be equal to _pricePool
             STETH.transfer(winner, priceSTETH);
 
             emit Winner(winnerTicket);
         } else {
             // Rebase ticket prices
-            totalSteth += pricePool;
-            emit Rebase(pricePool);
+            totalSteth += _pricePool;
+            emit Rebase(_pricePool);
         }
     }
 

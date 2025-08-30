@@ -26,13 +26,21 @@ contract LidoMockTest is Test {
         vm.prank(admin);
         TicketsLidoPot tickets = new TicketsLidoPot(0.1 ether, address(wsteth));
 
-        assertEq(tickets.ticketPriceInSteth(), 0.1 ether);
+        assertEq(tickets.ticketPriceInSteth(), 0.1 ether); // price in STETH
+        assertEq(tickets.ticketPrice(), 0.1 ether); // price in WSTETH
 
         vm.startPrank(user);
         steth.approve(address(tickets), type(uint256).max);
 
+        assertEq(tickets.pricePool(), 0);
+
         tickets.mint(10);
         assertEq(steth.balanceOf(user), 0);
+
+        assertEq(tickets.ticketPriceInSteth(), 0.1 ether); // price in STETH
+        assertEq(tickets.ticketPrice(), 0.1 ether); // price in WSTETH
+
+        assertEq(tickets.pricePool(), 0);
 
         // burn n5
         tickets.burn(5);
@@ -41,6 +49,11 @@ contract LidoMockTest is Test {
         tickets.ownerOf(5);
 
         vm.stopPrank();
+
+        assertEq(tickets.ticketPriceInSteth(), 0.1 ether); // price in STETH
+        assertEq(tickets.ticketPrice(), 0.1 ether); // price in WSTETH
+
+        assertEq(tickets.pricePool(), 0);
 
         address bob = makeAddr("bob");
         deal(address(steth), bob, 0.2 ether);
